@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prepare": "husky install",
+    "precommit": "npm run lint:fix && npm run format",
     "dev": "webpack-dev-server",
     "build": "webpack --config webpack.config.cjs",
     "lint": "eslint src/**/*.ts",
@@ -23,6 +25,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-prettier": "^4.0.0",
+    "husky": "^8.0.1",
     "node-polyfill-webpack-plugin": "^1.1.4",
     "prettier": "^2.6.2",
     "ts-loader": "^9.3.0",
