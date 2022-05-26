@@ -1,3 +1,5 @@
+/** @format */
+
 import {
   Lucid,
   Blockfrost,
@@ -41,7 +43,7 @@ export async function lockUtxo(
 }
 
 export async function redeemUtxo(number: number): Promise<TxHash> {
-// export const redeemUtxo = async (number: number): Promise<TxHash> => {
+  // export const redeemUtxo = async (number: number): Promise<TxHash> => {
   const utxos = await Lucid.utxosAt(matchingNumberAddress);
 
   console.log(utxos);
@@ -79,6 +81,4 @@ export const initLucid = async () => {
 
   // Assumes you are in a browser environment
   await Lucid.selectWallet("nami");
-
-  return;
 };

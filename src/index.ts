@@ -9,7 +9,7 @@ document.getElementById("lock")?.addEventListener("click", () => {
   // const userres = prompt("Enter amount to lock in Ada");
   const userres = "10";
   if (userres) {
-    const ada = parseInt(userres);
+    const ada = parseInt(userres, 10);
     console.log(ada);
     lockUtxo(pass, BigInt(ada * 1000000)).then(console.log);
   }
