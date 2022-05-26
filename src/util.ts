@@ -38,7 +38,7 @@ export async function lockUtxo(
   console.log(txHash);
 
   return txHash;
-};
+}
 
 export async function redeemUtxo(number: number): Promise<TxHash> {
 // export const redeemUtxo = async (number: number): Promise<TxHash> => {
@@ -66,7 +66,7 @@ export async function redeemUtxo(number: number): Promise<TxHash> {
   const txHash = await signedTx.submit();
 
   return txHash;
-};
+}
 
 export const initLucid = async () => {
   await Lucid.initialize(

@@ -2,7 +2,7 @@ import { initLucid, lockUtxo, redeemUtxo } from "./util";
 
 initLucid();
 
-const pass: number = 12344321;
+const pass = 12344321;
 console.log("Datum pass: ", pass);
 
 document.getElementById("lock")?.addEventListener("click", () => {
