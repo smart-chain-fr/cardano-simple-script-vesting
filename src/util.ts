@@ -21,11 +21,10 @@ const matchingNumberAddress = () => validatorToAddress(matchingNumberScript);
 export const Datum = (number: number) => Data.to(number);
 const Redeemer = (number: number) => Data.to(number);
 
-// export const lockUtxo = async (
-export async function lockUtxo(
+export const lockUtxo = async (
   number: number,
   lovelace: Lovelace
-): Promise<TxHash> {
+): Promise<TxHash> => {
   console.log(number, lovelace);
   const tx = await Tx.new()
     .payToContract(matchingNumberAddress(), Datum(number), { lovelace })
@@ -41,8 +40,7 @@ export async function lockUtxo(
   return txHash;
 }
 
-export async function redeemUtxo(number: number): Promise<TxHash> {
-  // export const redeemUtxo = async (number: number): Promise<TxHash> => {
+export const redeemUtxo = async (number: number): Promise<TxHash> => {
   const utxos = await Lucid.utxosAt(matchingNumberAddress());
 
   console.log(utxos);
