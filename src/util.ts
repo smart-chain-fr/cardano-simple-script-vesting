@@ -21,11 +21,10 @@ const matchingNumberAddress = () => validatorToAddress(matchingNumberScript);
 export const Datum = (number: number) => Data.to(number);
 const Redeemer = (number: number) => Data.to(number);
 
-// export const lockUtxo = async (
-export async function lockUtxo(
+export const lockUtxo = async (
   number: number,
   lovelace: Lovelace
-): Promise<TxHash> {
+): Promise<TxHash> => {
   console.log(number, lovelace);
   const tx = await Tx.new()
     .payToContract(matchingNumberAddress(), Datum(number), { lovelace })
@@ -39,10 +38,9 @@ export async function lockUtxo(
   console.log(txHash);
 
   return txHash;
-}
+};
 
-export async function redeemUtxo(number: number): Promise<TxHash> {
-  // export const redeemUtxo = async (number: number): Promise<TxHash> => {
+export const redeemUtxo = async (number: number): Promise<TxHash> => {
   const utxos = await Lucid.utxosAt(matchingNumberAddress());
 
   console.log(utxos);
@@ -67,7 +65,7 @@ export async function redeemUtxo(number: number): Promise<TxHash> {
   const txHash = await signedTx.submit();
 
   return txHash;
-}
+};
 
 export const initLucid = async () => {
   await Lucid.initialize(
@@ -78,6 +76,10 @@ export const initLucid = async () => {
     "Testnet"
   );
 
+  // if (privateKey) {
+  //   await Lucid.selectWalletFromPrivateKey(privateKey)
+  // } else {
   // Assumes you are in a browser environment
   await Lucid.selectWallet("nami");
+  // }
 };
