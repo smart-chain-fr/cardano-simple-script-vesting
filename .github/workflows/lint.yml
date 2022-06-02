@@ -3,7 +3,7 @@ on:
     paths:
       - '**.ts'
     branches:
-      - ci-setup
+      - master
   pull_request:
     paths:
       - '**.ts'
@@ -21,3 +21,15 @@ jobs:
         run: yarn install
       - name: lint
         run: yarn run lint:fix
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14
+      - name: yarn install
+        run: yarn install
+      - name: format
+        run: yarn run format

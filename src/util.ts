@@ -38,7 +38,7 @@ export const lockUtxo = async (
   console.log(txHash);
 
   return txHash;
-}
+};
 
 export const redeemUtxo = async (number: number): Promise<TxHash> => {
   const utxos = await Lucid.utxosAt(matchingNumberAddress());
@@ -65,7 +65,7 @@ export const redeemUtxo = async (number: number): Promise<TxHash> => {
   const txHash = await signedTx.submit();
 
   return txHash;
-}
+};
 
 export const initLucid = async () => {
   await Lucid.initialize(
@@ -76,6 +76,10 @@ export const initLucid = async () => {
     "Testnet"
   );
 
+  // if (privateKey) {
+  //   await Lucid.selectWalletFromPrivateKey(privateKey)
+  // } else {
   // Assumes you are in a browser environment
   await Lucid.selectWallet("nami");
+  // }
 };
