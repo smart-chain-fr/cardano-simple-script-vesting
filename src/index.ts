@@ -2,7 +2,7 @@ import { Lucid, Blockfrost } from "lucid-cardano";
 import { lockUtxo, redeemUtxo } from "./util";
 
 declare global {
-  // eslint-disable-line no-unused-vars
+// eslint-disable-next-line no-unused-vars
   interface Window {
     cardano: any;
   }

@@ -38,8 +38,6 @@ export const redeemUtxo =
   async (number: number): Promise<TxHash> => {
     const utxos = await lucid.utxosAt(matchingNumberAddress(lucid));
 
-    console.log(utxos);
-
     const filteredUtxos = (
       await Promise.all(
         utxos.map((utxo) =>
@@ -47,8 +45,6 @@ export const redeemUtxo =
         )
       )
     ).filter((x) => !!x.datum && x.datum === Datum(number));
-
-    console.log(filteredUtxos);
 
     const tx = await lucid
       .newTx()
