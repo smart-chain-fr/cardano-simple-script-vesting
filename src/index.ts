@@ -1,20 +1,27 @@
-import { initLucid, lockUtxo, redeemUtxo } from "./util";
+import { Lucid, Blockfrost } from "lucid-cardano";
+import { lockUtxo, redeemUtxo } from "./util";
 
-await initLucid();
-
-const pass = 12344321;
-console.log("Datum pass: ", pass);
-
-document.getElementById("lock")?.addEventListener("click", () => {
-  const userres = prompt("Enter amount to lock in Ada");
-  // const userres = "10";
-  if (userres) {
-    const ada = parseInt(userres, 10);
-    console.log(ada);
-    lockUtxo(pass, BigInt(ada * 1000000)).then(console.log);
+declare global {
+// eslint-disable-next-line no-unused-vars
+  interface Window {
+    cardano: any;
   }
-});
+}
 
-document.getElementById("unlock")?.addEventListener("click", () => {
-  redeemUtxo(pass).then(console.log);
-});
+const init = async (blockfrostUrl: string, projectId: string, pass: number) => {
+  const lucid = await Lucid.new(
+    new Blockfrost(blockfrostUrl, projectId),
+    "Testnet"
+  );
+
+  const api = await window.cardano.nami.enable();
+  // Assumes you are in a browser environment
+  lucid.selectWallet(api);
+
+  return {
+    lockTest: () => lockUtxo(lucid)(pass, BigInt(10000000)),
+    redeemTest: () => redeemUtxo(lucid)(pass),
+  };
+};
+
+export default init;
