@@ -15,7 +15,7 @@ data AssetClass = AssetClass
 
 data LockedFund = LockedFund
   { nativeScript :: NativeScript
-  , asset :: AssetClass
+  , assetClass :: AssetClass
   }
 
 type Address = String
@@ -36,7 +36,7 @@ Example:
         "pkh": "ec8c7d111c04761ef362a0036d36893e7f04adde4afd5ea3e1e85914",
         "unlockTime": 62681940
       },
-      "asset": {
+      "assetClass": {
         "currencySymbol": "7b302af5758319058e3a282c424bf19adda9481372cf6e45fd33d0aa",
         "tokenName": "54686541706544616f32353338"
       }
@@ -62,7 +62,7 @@ Example:
       "pkh": "ec8c7d111c04761ef362a0036d36893e7f04adde4afd5ea3e1e85914",
       "unlockTime": 62681940
     },
-    "asset": {
+    "assetClass": {
       "currencySymbol": "7b302af5758319058e3a282c424bf19adda9481372cf6e45fd33d0aa",
       "tokenName": "54686541706544616f32353338"
     }
