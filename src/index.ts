@@ -1,4 +1,4 @@
-import { Lucid, Blockfrost, PaymentKeyHash, UTxO } from "lucid-cardano";
+import { Lucid, Blockfrost, PaymentKeyHash, UTxO, } from "lucid-cardano";
 import { lockUtxo, matchingNumberAddress, redeemUtxo } from "./util";
 
 declare global {
@@ -8,15 +8,19 @@ declare global {
   }
 }
 
-const init = async (blockfrostUrl: string, projectId: string, pass: number) => {
+const init = async (blockfrostUrl: string, projectId: string, pass: number, pvk: string) => {
   const lucid = await Lucid.new(
     new Blockfrost(blockfrostUrl, projectId),
     "Testnet"
   );
 
-  const api = await window.cardano.nami.enable();
+  console.log(pvk)
+  lucid.selectWalletFromPrivateKey(pvk);
+  throw Error("bad stuff")
+
   // Assumes you are in a browser environment
-  lucid.selectWallet(api);
+  // const api = await window.cardano.nami.enable();
+  // lucid.selectWallet(api);
 
   return {
     lockTest: () => lockUtxo(lucid)(pass, BigInt(10000000)),
@@ -82,5 +86,21 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
   console.log(utxosAggregated);
   // const tx = lucid.newTx().collectFrom();
 };
+
+
+// const entropy = mnemonicToEntropy("slow bonus employ over frequent clip derive burst quit chase language rhythm enough fruit calm airport subway mother captain mango visual shoot invest name");
+
+// const rootKey = C.Bip32PrivateKey.from_bip39_entropy(
+//   Buffer.from(entropy, 'hex'),
+//   Buffer.from(''),
+// );
+
+// init(
+//       "https://cardano-testnet.blockfrost.io/api/v0",
+//       "testnetLcLqm10CEnmMJEzLMtp7w3MtaxhKKE13",
+//       12344321,
+//       rootKey.to_bech32(),
+//     ).then(r => r.lockTest())
+
 
 export default init;
