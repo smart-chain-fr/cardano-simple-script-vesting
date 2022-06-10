@@ -29,7 +29,7 @@
     }
   },
   "name": "cardashift-lucid-contracts",
-  "module": "dist/index.js",
+  "module": "dist/cardashift-lucid-contracts.esm.js",
   "devDependencies": {
     "@size-limit/preset-small-lib": "^7.0.8",
     "@typescript-eslint/eslint-plugin": "^5.26.0",
