@@ -1,6 +1,5 @@
-import { Lucid, Blockfrost, PaymentKeyHash, UTxO, } from "lucid-cardano";
-import {Assets} from "lucid-cardano/custom_modules/cardano-multiplatform-lib-browser";
-import { lockUtxo, matchingNumberAddress, redeemUtxo } from "./util";
+import { Lucid, Blockfrost, PaymentKeyHash, UTxO, C } from "lucid-cardano";
+import { lockUtxo, redeemUtxo } from "./util";
 
 declare global {
   // eslint-disable-next-line no-unused-vars
@@ -9,35 +8,49 @@ declare global {
   }
 }
 
-const init = async (blockfrostUrl: string, projectId: string, pass: number, _pvk: string) => {
+const init = async (
+  blockfrostUrl: string,
+  projectId: string,
+  pass: number,
+  pvk: string
+) => {
   const lucid = await Lucid.new(
     new Blockfrost(blockfrostUrl, projectId),
     "Testnet"
   );
 
+  const generated = C.PrivateKey.generate_ed25519()
+  console.log(generated)
+  console.log(generated.to_bech32())
+
   // console.log(pvk)
-  // lucid.selectWalletFromPrivateKey(pvk);
+  lucid.selectWalletFromPrivateKey(pvk);
   // throw Error("bad stuff")
 
   // Assumes you are in a browser environment
-  const api = await window.cardano.nami.enable();
-  lucid.selectWallet(api);
+  // const api = await window.cardano.nami.enable();
+  // lucid.selectWallet(api);
 
   return {
     lockTest: () => lockUtxo(lucid)(pass, BigInt(10000000)),
     redeemTest: () => redeemUtxo(lucid)(pass),
-    fundsAvailable: (pkh: string) => lookupAvailableFunds(lucid)({
-        [matchingNumberAddress(lucid)]: [{
-          nativeScript: { unlockTime: 1654267530, pkh },
-          asset: { currencySymbol: "", tokenName: "" },
-        }],
+    fundsAvailable: (pkh: string) =>
+      lookupAvailableFunds(lucid)({
+        'addr_test1wqflq3fxkyhnf6jchk30039f9pkj340smaxc4t8sa5q9fccmh3w4d': [
+          {
+            nativeScript: { unlockTime: 1654267530, pkh },
+            asset: { currencySymbol: "", tokenName: "" },
+          },
+        ],
       }),
     claimFunds: (pkh: string) =>
       claimVestedFunds(lucid)({
-        [matchingNumberAddress(lucid)]: [{
-          nativeScript: { unlockTime: 1654267530, pkh },
-          asset: { currencySymbol: "", tokenName: "" },
-        }],
+        'addr_test1wqflq3fxkyhnf6jchk30039f9pkj340smaxc4t8sa5q9fccmh3w4d': [
+          {
+            nativeScript: { unlockTime: 1654267530, pkh },
+            asset: { currencySymbol: "", tokenName: "" },
+          },
+        ],
       }),
   };
 };
@@ -58,9 +71,12 @@ const claimChecks =
   ): ((u: UTxO) => boolean)[] =>
     [
       // unlock time check
-      (_u) => (new Date()).getTime() > (unlockTime * 1000),
+      (_u) => new Date().getTime() > unlockTime * 1000,
       // assetlcass check
-      (u) => Object.keys(u.assets).includes(assets.currencySymbol + assets.tokenName),
+      (u) => !!assets || !!u.assets || true
+        // Object.keys(u.assets).includes(
+        //   assets.currencySymbol + assets.tokenName
+        // ),
     ];
 
 const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
@@ -68,8 +84,10 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
     Object.entries(toClaim).map(async ([address, tcs]) =>
       Promise.all(
         tcs.map(async (tc) => {
-          const utxos = (await lucid.utxosAt(address)).map(u => ({...u, addressDetails: lucid.utils.getAddressDetails(u.address)}));
-          console.log(utxos)
+          const utxos = (await lucid.utxosAt(address)).map((u) => ({
+            ...u,
+            addressDetails: lucid.utils.getAddressDetails(u.address),
+          }));
 
           const predicates = claimChecks(lucid)(
             tc.nativeScript.pkh,
@@ -78,7 +96,10 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
           );
 
           const claimableUtxos = utxos.filter((utxo) =>
-            predicates.reduce((acc: boolean, predicate) => acc && predicate(utxo), true)
+            predicates.reduce(
+              (acc: boolean, predicate) => acc && predicate(utxo),
+              true
+            )
           );
           return claimableUtxos;
         })
@@ -86,13 +107,19 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
     )
   );
 
-  const flattenedUtxos = utxosAggregated.reduce((acc: UTxO[], cur) => cur.reduce((acc2,cur2) => [...acc2, ...cur2 ], acc) ,[])
+  const flattenedUtxos = utxosAggregated.reduce(
+    (acc: UTxO[], cur) => cur.reduce((acc2, cur2) => [...acc2, ...cur2], acc),
+    []
+  );
 
-  console.log(utxosAggregated);
+  console.log("available: ",utxosAggregated);
 
   const tx = await lucid.newTx().collectFrom(flattenedUtxos).complete();
+  console.log(tx)
   const signed = await tx.sign().complete();
-  const txHash = await signed.submit()
+  console.log(signed)
+  const txHash = await signed.submit();
+  console.log(txHash)
 
   return txHash;
 };
@@ -102,8 +129,10 @@ const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
     Object.entries(toClaim).map(async ([address, tcs]) =>
       Promise.all(
         tcs.map(async (tc) => {
-          const utxos = (await lucid.utxosAt(address)).map(u => ({...u, addressDetails: lucid.utils.getAddressDetails(u.address)}));
-          console.log(utxos)
+          const utxos = (await lucid.utxosAt(address)).map((u) => ({
+            ...u,
+            addressDetails: lucid.utils.getAddressDetails(u.address),
+          }));
 
           const predicates = claimChecks(lucid)(
             tc.nativeScript.pkh,
@@ -112,7 +141,10 @@ const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
           );
 
           const claimableUtxos = utxos.filter((utxo) =>
-            predicates.reduce((acc: boolean, predicate) => acc && predicate(utxo), true)
+            predicates.reduce(
+              (acc: boolean, predicate) => acc && predicate(utxo),
+              true
+            )
           );
           return claimableUtxos;
         })
@@ -120,12 +152,21 @@ const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
     )
   );
 
-  const flattenedUtxos = utxos.reduce((acc: UTxO[], cur) => cur.reduce((acc2,cur2) => [...acc2, ...cur2 ], acc) ,[])
+  const flattenedUtxos = utxos.reduce(
+    (acc: UTxO[], cur) => cur.reduce((acc2, cur2) => [...acc2, ...cur2], acc),
+    []
+  );
 
-  const valueLocked = flattenedUtxos.reduce((acc: any, u: UTxO) => ({...acc, ...u.assets}) ,{})
+  console.log(flattenedUtxos)
+
+  // TODO: change any to Assets
+  const valueLocked = flattenedUtxos.reduce(
+    (acc: any, u: UTxO) => ({ ...acc, ...u.assets }),
+    {}
+  );
+
   return valueLocked;
-}
-
+};
 
 // const entropy = mnemonicToEntropy("slow bonus employ over frequent clip derive burst quit chase language rhythm enough fruit calm airport subway mother captain mango visual shoot invest name");
 
@@ -140,6 +181,5 @@ const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
 //       12344321,
 //       rootKey.to_bech32(),
 //     ).then(r => r.lockTest())
-
 
 export default init;
