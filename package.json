@@ -30,6 +30,12 @@
   },
   "name": "cardashift-lucid-contracts",
   "module": "dist/cardashift-lucid-contracts.esm.js",
+  "exports": {
+    ".": {
+        "import": "./dist/cardashift-lucid-contracts.esm.js",
+        "require": "./dist/index.js"
+    }
+  },
   "devDependencies": {
     "@size-limit/preset-small-lib": "^7.0.8",
     "@typescript-eslint/eslint-plugin": "^5.26.0",
@@ -50,6 +56,7 @@
     "tslib": "^2.4.0",
     "typescript": "^4.7.2"
   },
+  "type":"module",
   "dependencies": {
     "lucid-cardano": "^0.3.3"
   }

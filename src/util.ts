@@ -52,7 +52,7 @@ export const redeemUtxo =
     const tx = await lucid
       .newTx()
       .collectFrom(filteredUtxos, Redeemer(number))
-      // .attachSpendingValidator(matchingNumberScript)
+      .attachSpendingValidator(matchingNumberScript)
       .complete();
 
     const signedTx = await tx.sign().complete();
