@@ -1,7 +1,7 @@
 // import fc from "fast-check";
-import init from "../src/index";
 import { mnemonicToEntropy } from "bip39";
 import { C } from "lucid-cardano";
+import init from "../src/index";
 
 const entropy = mnemonicToEntropy(
   "slow bonus employ over frequent clip derive burst quit chase language rhythm enough fruit calm airport subway mother captain mango visual shoot invest name"
@@ -26,7 +26,6 @@ function harden(num: number): number {
 
 describe("Sample Test Suite", () => {
   it("Sample Test", () => {
-    expect(true).toBe(true)
-
+    expect(true).toBe(true);
   });
 });
