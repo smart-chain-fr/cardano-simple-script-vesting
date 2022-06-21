@@ -13,5 +13,5 @@ module.exports = {
   },
   roots: ['<rootDir>'],
   modulePaths: ['<rootDir>'],
-  moduleDirectories: ['node_modules', 'custom_modules'],
+  moduleDirectories: ['node_modules'],
 };

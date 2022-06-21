@@ -1,31 +1,40 @@
 // import fc from "fast-check";
-import { mnemonicToEntropy } from "bip39";
-import { C } from "lucid-cardano";
-import init from "../src/index";
-
-const entropy = mnemonicToEntropy(
-  "slow bonus employ over frequent clip derive burst quit chase language rhythm enough fruit calm airport subway mother captain mango visual shoot invest name"
-);
-
-const rootKey = C.Bip32PrivateKey.from_bip39_entropy(
-  Buffer.from(entropy, "hex"),
-  Buffer.from("")
-);
-
-function harden(num: number): number {
-  return 0x80000000 + num;
-}
-// init(
-//     "https://cardano-testnet.blockfrost.io/api/v0",
-//     "testnetLcLqm10CEnmMJEzLMtp7w3MtaxhKKE13",
-//     12344321,
-//     // bech32 ed25519_sk <<< 8af9e38b29a81119ffbf5f857a12d922fb31987f04f24b4f18b6744fe2744921
-//     //                       ^^ cborHex
-//     "ed25519_sk13tu78zef4qg3nlalt7zh5ykeytanrxrlqneyknccke6ylcn5fysswsaeys"
-// ).then((r) => r.claimFunds("3b1cc33f9b730292484cd21882f3057a6ff11276ba9a31a831e18cbf"));
+import init from "../src";
+import config from "../config";
 
 describe("Sample Test Suite", () => {
-  it("Sample Test", () => {
-    expect(true).toBe(true);
+  it("Sample Test", async () => {
+    const funds = await init(
+      config.url, // blockfrost testnet url
+      config.apiKey, // blockfrost testnet apikey
+      "ed25519_sk1mp6a28k5423ttwny08362fl8dx2dtm4r2vyy0n83kpvny94hxzhqw96eru"
+    ).then(({ fundsAvailable }) => {
+      const epData = {
+        // native1
+        addr_test1wplllmmv66873lu9fxvralrddql5pxqg9ws8wvy4tz7gquqnyhmwk: [
+          {
+            nativeScript: {
+              unlockTime: 61302000,
+              pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8",
+            },
+            asset: { currencySymbol: "", tokenName: "" },
+          },
+        ],
+        // native2
+        addr_test1wr4s67h09peh3ssrx95l5k5rlfzw4ez4x2hlsuf6m4pwukc87xd44: [
+          {
+            nativeScript: {
+              unlockTime: 61310000,
+              pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8",
+            },
+            asset: { currencySymbol: "", tokenName: "" },
+          },
+        ],
+      };
+
+      return fundsAvailable(epData);
+    });
+
+    expect(funds.lovelace.toString()).toBe("30000000");
   });
 });
