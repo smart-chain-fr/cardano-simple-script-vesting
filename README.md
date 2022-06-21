@@ -1,5 +1,7 @@
 ## Sample usage
 
+[**VIDEO**](https://drive.google.com/file/d/17Fnpus1X-_Vnj9Itx43HlAKZt4D-H0td/view?usp=sharing)
+
 ### Step 0: Key generation
 
 > **NOTE**: This step is only needed for the purposes of the demo and running the code in
