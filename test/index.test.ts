@@ -1,12 +1,11 @@
-// import fc from "fast-check";
 import init from "../src";
 import config from "../config";
 
 describe("Sample Test Suite", () => {
   it("Sample Test", async () => {
     const funds = await init(
-      config.url, // blockfrost testnet url
-      config.apiKey, // blockfrost testnet apikey
+      config.url,
+      config.apiKey,
       "ed25519_sk1mp6a28k5423ttwny08362fl8dx2dtm4r2vyy0n83kpvny94hxzhqw96eru"
     ).then(({ fundsAvailable }) => {
       const epData = {
