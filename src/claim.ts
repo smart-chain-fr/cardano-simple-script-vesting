@@ -129,10 +129,15 @@ const init = async (blockfrostUrl: string, projectId: string, pvk: string) => {
   // const api = await window.cardano.nami.enable();
   // lucid.selectWallet(api);
 
+  const getEndpointData = (): Promise<ToClaim> =>
+    fetch("http://localhost:8000/data.json").then((r) => r.json());
+
   return {
-    fundsAvailable: async (tc: ToClaim) =>
-      totalClaimableUtxos(await lookupAvailableFunds(lucid)(tc)),
-    claimFunds: (tc: ToClaim) => claimVestedFunds(lucid)(tc),
+    fundsAvailable: async (epData?: ToClaim) =>
+      totalClaimableUtxos(
+        await lookupAvailableFunds(lucid)(epData || await getEndpointData())
+      ),
+    claimFunds: async (epData?: ToClaim) => claimVestedFunds(lucid)(epData || await getEndpointData()),
   };
 };
 
