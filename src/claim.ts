@@ -1,4 +1,4 @@
-import { Lucid, Blockfrost, UTxO, Assets } from "lucid-cardano";
+import { Lucid, Blockfrost, UTxO, Assets, Network, WalletProvider } from "lucid-cardano";
 import { buildTimelockedNativeScript, claimChecks, ToClaim } from "./util";
 
 declare global {
@@ -117,27 +117,54 @@ const totalClaimableUtxos = (
       {}
     );
 
-const init = async (blockfrostUrl: string, projectId: string, pvk: string) => {
+
+/**
+ * Initialise the library and expose lib API
+ * @param {string} blockfrostUrl Blockfrost API URL
+ * @param {string} apiKey Blockfrost API Key
+ * @param wallet Either bech32 encoded signing key or a browser wallet provider.
+ * @param {string} [network]
+ * @namespace cardashift-lucid-contracts
+ */
+const init = async (
+  blockfrostUrl: string,
+  apiKey: string,
+  wallet: string | WalletProvider,
+  network: Network = "Testnet"
+) => {
   const lucid = await Lucid.new(
-    new Blockfrost(blockfrostUrl, projectId),
-    "Testnet"
+    new Blockfrost(blockfrostUrl, apiKey),
+    network
   );
 
-  lucid.selectWalletFromPrivateKey(pvk);
-
-  // For browser wallet:
-  // const api = await window.cardano.nami.enable();
-  // lucid.selectWallet(api);
+  if (Object.keys()) {
+    lucid.selectWalletFromPrivateKey(wallet);
+  } else {
+    // For browser wallet:
+    lucid.selectWallet(wallet)
+  }
 
   const getEndpointData = (): Promise<ToClaim> =>
     fetch("http://localhost:8000/data.json").then((r) => r.json());
 
   return {
+    /**
+     * Query and return available funds that can be claimed optionally based on
+     * given claim data, otherwise fetches claim data from configured endpoint otherwise.
+     * @memberof cardashift-lucid-contracts
+     */
     fundsAvailable: async (epData?: ToClaim) =>
       totalClaimableUtxos(
-        await lookupAvailableFunds(lucid)(epData || await getEndpointData())
+        await lookupAvailableFunds(lucid)(epData || (await getEndpointData()))
       ),
-    claimFunds: async (epData?: ToClaim) => claimVestedFunds(lucid)(epData || await getEndpointData()),
+    /**
+     * Claim available funds optionally from given claim data when param is
+     * provided, otherwise request claim data from configured endpoint.
+     * @memberof cardashift-lucid-contracts
+     * @param {ToClaim} [epData] Optional endpoint data to claim from
+     */
+    claimFunds: async (epData?: ToClaim) =>
+      claimVestedFunds(lucid)(epData || (await getEndpointData())),
   };
 };
 
