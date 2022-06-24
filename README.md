@@ -1,4 +1,72 @@
-## Sample usage
+## Usage
+
+### Initialisation
+
+To use the utilit, first initialise the library with the following parameters:
+* `blockfrostUrl` : A blockfrost api project URL
+* `apiKey` : A blockfrost apiKey/projectId
+* `wallet` : A browser wallet provider (`nami`,`flint`,`eternal` etc.) or
+  a bech32 encoded signing key (`ed25519_sk1...`)
+* `network`: Network to run. Default is `Testnet`
+
+
+sample call:
+```js
+init(
+      config.url,
+      config.apiKey,
+      "ed25519_sk1mp6a28k5423ttwny08362fl8dx2dtm4r2vyy0n83kpvny94hxzhqw96eru",
+      "Testnet"
+    )
+```
+
+### Exposed functions
+
+`init` takes the mentioned parameters, initialises the utility, and returns
+a promise exposing 2 functions:
+
+Both functions optionally take an endpoint data parameter which overrides
+querying the underlying endpoint and proceeds to lookup/claim funds
+corresponding to given __endpoint data__
+
+
+
+* `fundsAvailable`: A function that queries an endpoint and returns the total
+  amount of assets that can be claimed at that point in time.
+
+* `claimFunds`: A function that builds a transaction claiming the total amount
+  of claimable assets
+
+Example call:
+```js
+      const epData = {
+        // native1
+        addr_test1wplllmmv66873lu9fxvralrddql5pxqg9ws8wvy4tz7gquqnyhmwk: [
+          {
+            nativeScript: {
+              unlockTime: 61302000,
+              pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8",
+            },
+            asset: { currencySymbol: "", tokenName: "" },
+          },
+        ],
+        // native2
+        addr_test1wr4s67h09peh3ssrx95l5k5rlfzw4ez4x2hlsuf6m4pwukc87xd44: [
+          {
+            nativeScript: {
+              unlockTime: 61310000,
+              pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8",
+            },
+            asset: { currencySymbol: "", tokenName: "" },
+          },
+        ],
+      };
+
+      return fundsAvailable(epData); // or claimFunds(epData)
+
+```
+
+## Full Demo
 
 [**VIDEO**](https://drive.google.com/file/d/17Fnpus1X-_Vnj9Itx43HlAKZt4D-H0td/view?usp=sharing)
 

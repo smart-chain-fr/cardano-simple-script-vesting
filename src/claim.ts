@@ -1,4 +1,11 @@
-import { Lucid, Blockfrost, UTxO, Assets, Network, WalletProvider } from "lucid-cardano";
+import {
+  Lucid,
+  Blockfrost,
+  UTxO,
+  Assets,
+  Network,
+  WalletProvider,
+} from "lucid-cardano";
 import { buildTimelockedNativeScript, claimChecks, ToClaim } from "./util";
 
 declare global {
@@ -46,24 +53,6 @@ const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
     ) => cur.reduce((acc2, cur2) => [...acc2, cur2], acc),
     []
   );
-
-  // const totalValueLocked = flattenedUtxos
-  //   .map((x) => x.utxos.map((y) => y.assets))
-  //   .flat()
-  //   .reduce(
-  //     (acc: Assets, cur: Assets) =>
-  //       Object.entries(cur).reduce(
-  //         (acc2: Assets, [a, v]) =>
-  //           a in acc2
-  //             ? { ...acc2, [a]: acc2[a].valueOf() + v.valueOf() }
-  //             : { ...acc2, [a]: v },
-  //         acc
-  //       ),
-  //     {}
-  //   );
-
-  // console.log(totalValueLocked);
-  // console.log(flattenedUtxos);
 
   return flattenedUtxos.filter((x) => !!x.utxos.length);
 };
@@ -117,7 +106,6 @@ const totalClaimableUtxos = (
       {}
     );
 
-
 /**
  * Initialise the library and expose lib API
  * @param {string} blockfrostUrl Blockfrost API URL
@@ -132,16 +120,13 @@ const init = async (
   wallet: string | WalletProvider,
   network: Network = "Testnet"
 ) => {
-  const lucid = await Lucid.new(
-    new Blockfrost(blockfrostUrl, apiKey),
-    network
-  );
+  const lucid = await Lucid.new(new Blockfrost(blockfrostUrl, apiKey), network);
 
-  if (Object.keys()) {
+  if (wallet.startsWith("ed25519")) {
     lucid.selectWalletFromPrivateKey(wallet);
   } else {
     // For browser wallet:
-    lucid.selectWallet(wallet)
+    lucid.selectWallet(wallet);
   }
 
   const getEndpointData = (): Promise<ToClaim> =>
