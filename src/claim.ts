@@ -6,7 +6,12 @@ import {
   Network,
   WalletProvider,
 } from "lucid-cardano";
-import { buildTimelockedNativeScript, claimChecks, ToClaim } from "./util";
+import {
+  buildTimelockedNativeScript,
+  claimChecks,
+  deduplicateUtxosReducer,
+  ToClaim,
+} from "./util";
 
 declare global {
   // eslint-disable-next-line no-unused-vars
@@ -61,25 +66,22 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
   const claimableUtxos = await lookupAvailableFunds(lucid)(toClaim);
   if (!claimableUtxos.length) throw Error("Nothing to claim");
 
+  // console.log(claimableUtxos.map((x) => x.nativeScript));
+
   const natives = claimableUtxos.map((x) =>
     buildTimelockedNativeScript(x.nativeScript.unlockTime, x.nativeScript.pkh)
   );
-  // Object.values(toClaim).map(x => x.map(y => y.nativeScript).flat()).flat().map(x => buildTimelockedNativeScript(x.unlockTime, x.pkh))
+  // console.log(natives.map(x => x.to_json()))
 
   const tx = lucid
     .newTx()
-    .collectFrom(claimableUtxos.map((x) => x.utxos).flat());
+    .collectFrom(claimableUtxos.reduce(deduplicateUtxosReducer, []));
 
-  [natives[0]].forEach((n) => tx.txBuilder.add_native_script(n));
-
-  // throw Error("stopping")
+  natives.forEach((n) => tx.txBuilder.add_native_script(n));
 
   const txScriptAttached = await tx.validFrom(Date.now() - 100000).complete();
-  // console.log(txScriptAttached.txComplete.to_json());
 
   const signed = await txScriptAttached.sign().complete();
-  // console.log(signed.txSigned.to_js_value());
-  // throw Error("stopping")
 
   const txHash = await signed.submit();
   return txHash;
@@ -92,7 +94,8 @@ const totalClaimableUtxos = (
   }[]
 ) =>
   flattenedUtxos
-    .map((x) => x.utxos.map((y) => y.assets))
+    .reduce(deduplicateUtxosReducer, [])
+    .map((x) => x.assets)
     .flat()
     .reduce(
       (acc: Assets, cur: Assets) =>

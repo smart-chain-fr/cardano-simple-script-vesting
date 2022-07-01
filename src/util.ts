@@ -7,6 +7,21 @@ export type ToClaim = {
   }[];
 };
 
+export const deduplicateUtxosReducer = (
+  acc: UTxO[],
+  cur: { utxos: UTxO[]; nativeScript: any }
+) => [
+  ...acc,
+  ...cur.utxos.filter(
+    (newUtxo) =>
+      !acc.some(
+        (existingUtxo) =>
+          newUtxo.txHash === existingUtxo.txHash &&
+          newUtxo.outputIndex === existingUtxo.outputIndex
+      )
+  ),
+];
+
 export const claimChecks =
   (lucid: Lucid) =>
   (
@@ -18,7 +33,15 @@ export const claimChecks =
       // unlock time check
       () => lucid.utils.unixTimeToSlot(Date.now()) > unlockTime,
       // assetlcass check
-      (u: UTxO) => !!u.assets && !!assets,
+      (u: UTxO) => {
+        let assetConcat = assets.currencySymbol + assets.tokenName;
+        if (!assetConcat.length) {
+          assetConcat = "lovelace";
+        }
+        const containsAssets = Object.keys(u.assets).includes(assetConcat);
+
+        return !!u.assets && !!assets && containsAssets;
+      },
       // Object.keys(u.assets).includes(
       //   assets.currencySymbol + assets.tokenName
       // ),
