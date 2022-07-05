@@ -10,6 +10,7 @@ import {
   buildTimelockedNativeScript,
   claimChecks,
   deduplicateUtxosReducer,
+  groupByScript,
   ToClaim,
 } from "./util";
 
@@ -21,45 +22,24 @@ declare global {
 }
 
 const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
-  const allUtxos = await Promise.all(
-    Object.entries(toClaim).map(async ([address, tcs]) =>
-      Promise.all(
-        tcs.map(async (tc) => {
-          const utxos = (await lucid.utxosAt(address)).map((u) => ({
-            ...u,
-            addressDetails: lucid.utils.getAddressDetails(u.address),
-          }));
+  const groupedByScript = groupByScript(toClaim);;
+  console.log(groupedByScript)
 
-          const predicates = claimChecks(lucid)(
-            tc.nativeScript.pkh,
-            tc.nativeScript.unlockTime,
-            tc.asset
-          );
+  const addressesWithUtxos = await Promise.all(groupedByScript.map(async (x) => {
+    const utxos = await lucid.utxosAt(x.address);
 
-          const claimableUtxos = utxos.filter((utxo) =>
-            predicates.reduce(
-              (acc: boolean, predicate) => acc && predicate(utxo),
-              true
-            )
-          );
-          return { utxos: claimableUtxos, nativeScript: tc.nativeScript };
-        })
-      )
-    )
-  );
+    const predicates = claimChecks(lucid)(x.nativeScript.pkh,x.nativeScript.unlockTime,x.assets);
 
-  const flattenedUtxos = allUtxos.reduce(
-    (
-      acc: {
-        utxos: UTxO[];
-        nativeScript: { pkh: string; unlockTime: number };
-      }[],
-      cur
-    ) => cur.reduce((acc2, cur2) => [...acc2, cur2], acc),
-    []
-  );
+    const claimableUtxos = utxos.filter((x) => predicates.every((p) => p(x)));
 
-  return flattenedUtxos.filter((x) => !!x.utxos.length);
+    return {
+      utxos: claimableUtxos,
+      nativeScript: x.nativeScript,
+      address: x.address,
+    };
+  }));
+
+  return addressesWithUtxos.filter((x) => !!x.utxos.length);
 };
 
 const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
