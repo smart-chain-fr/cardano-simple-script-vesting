@@ -23,7 +23,6 @@ declare global {
 
 const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
   const groupedByScript = groupByScript(toClaim);;
-  console.log(groupedByScript)
 
   const addressesWithUtxos = await Promise.all(groupedByScript.map(async (x) => {
     const utxos = await lucid.utxosAt(x.address);
@@ -44,6 +43,7 @@ const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
 
 const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
   const claimableUtxos = await lookupAvailableFunds(lucid)(toClaim);
+
   if (!claimableUtxos.length) throw Error("Nothing to claim");
 
   // console.log(claimableUtxos.map((x) => x.nativeScript));
@@ -51,17 +51,18 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
   const natives = claimableUtxos.map((x) =>
     buildTimelockedNativeScript(x.nativeScript.unlockTime, x.nativeScript.pkh)
   );
-  // console.log(natives.map(x => x.to_json()))
 
   const tx = lucid
     .newTx()
-    .collectFrom(claimableUtxos.reduce(deduplicateUtxosReducer, []));
+    .collectFrom(claimableUtxos.map((x) => x.utxos).flat())
 
   natives.forEach((n) => tx.txBuilder.add_native_script(n));
 
   const txScriptAttached = await tx.validFrom(Date.now() - 100000).complete();
 
   const signed = await txScriptAttached.sign().complete();
+
+  console.log(signed.txSigned.to_json());
 
   const txHash = await signed.submit();
   return txHash;
