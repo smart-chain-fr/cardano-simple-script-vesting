@@ -40,15 +40,17 @@ export const claimChecks =
       () => lucid.utils.unixTimeToSlot(Date.now()) > unlockTime,
       // assetlcass check
       (u: UTxO) => {
-        const assetsConcat = assets.map(asset => {
+        const assetsConcat = assets.map((asset) => {
           let assetConcat = asset.currencySymbol + asset.tokenName;
           if (!assetConcat.length) {
             assetConcat = "lovelace";
           }
           return assetConcat;
-        })
+        });
 
-        const containsAssets = assetsConcat.some((asset) => Object.keys(u.assets).includes(asset))
+        const containsAssets = assetsConcat.some((asset) =>
+          Object.keys(u.assets).includes(asset)
+        );
 
         return !!u.assets && containsAssets;
       },
@@ -76,8 +78,8 @@ export const buildTimelockedNativeScript = (slot: number, pkh: string) => {
   return C.NativeScript.new_script_all(scriptAll);
 };
 
-
-export const groupByScript = (toClaim: ToClaim) => Object.entries(toClaim).reduce(
+export const groupByScript = (toClaim: ToClaim) =>
+  Object.entries(toClaim).reduce(
     (acc: GroupedByScript[], [address, value]) =>
       value.reduce((acc2: GroupedByScript[], nc) => {
         const seenIndex = acc2.findIndex(

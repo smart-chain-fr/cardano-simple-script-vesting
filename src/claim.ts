@@ -22,47 +22,29 @@ declare global {
 }
 
 const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
-  const groupedByScript = groupByScript(toClaim);;
+  const groupedByScript = groupByScript(toClaim);
 
-  const addressesWithUtxos = await Promise.all(groupedByScript.map(async (x) => {
-    const utxos = await lucid.utxosAt(x.address);
+  const addressesWithUtxos = await Promise.all(
+    groupedByScript.map(async (x) => {
+      const utxos = await lucid.utxosAt(x.address);
 
-    const predicates = claimChecks(lucid)(x.nativeScript.pkh,x.nativeScript.unlockTime,x.assets);
+      const predicates = claimChecks(lucid)(
+        x.nativeScript.pkh,
+        x.nativeScript.unlockTime,
+        x.assets
+      );
 
-    const claimableUtxos = utxos.filter((x) => predicates.every((p) => p(x)));
+      const claimableUtxos = utxos.filter((u) => predicates.every((p) => p(u)));
 
-    return {
-      utxos: claimableUtxos,
-      nativeScript: x.nativeScript,
-      address: x.address,
-    };
-  }));
-
-  return addressesWithUtxos.filter((x) => !!x.utxos.length);
-};
-
-const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
-  const claimableUtxos = await lookupAvailableFunds(lucid)(toClaim);
-
-  if (!claimableUtxos.length) throw Error("Nothing to claim");
-
-  const natives = claimableUtxos.map((x) =>
-    buildTimelockedNativeScript(x.nativeScript.unlockTime, x.nativeScript.pkh)
+      return {
+        utxos: claimableUtxos,
+        nativeScript: x.nativeScript,
+        address: x.address,
+      };
+    })
   );
 
-  const tx = lucid
-    .newTx()
-    .collectFrom(claimableUtxos.map((x) => x.utxos).flat())
-    .payToAddress(await lucid.wallet.address(), totalClaimableUtxos(claimableUtxos));
-
-  natives.forEach((n) => tx.txBuilder.add_native_script(n));
-
-  const txScriptAttached = await tx.validFrom(Date.now() - 100000).complete();
-
-  const signed = await txScriptAttached.sign().complete();
-
-  const txHash = await signed.submit();
-  return txHash;
+  return addressesWithUtxos.filter((x) => !!x.utxos.length);
 };
 
 const totalClaimableUtxos = (
@@ -86,6 +68,33 @@ const totalClaimableUtxos = (
         ),
       {}
     );
+
+const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
+  const claimableUtxos = await lookupAvailableFunds(lucid)(toClaim);
+
+  if (!claimableUtxos.length) throw Error("Nothing to claim");
+
+  const natives = claimableUtxos.map((x) =>
+    buildTimelockedNativeScript(x.nativeScript.unlockTime, x.nativeScript.pkh)
+  );
+
+  const tx = lucid
+    .newTx()
+    .collectFrom(claimableUtxos.map((x) => x.utxos).flat())
+    .payToAddress(
+      await lucid.wallet.address(),
+      totalClaimableUtxos(claimableUtxos)
+    );
+
+  natives.forEach((n) => tx.txBuilder.add_native_script(n));
+
+  const txScriptAttached = await tx.validFrom(Date.now() - 100000).complete();
+
+  const signed = await txScriptAttached.sign().complete();
+
+  const txHash = await signed.submit();
+  return txHash;
+};
 
 /**
  * Initialise the library and expose lib API
