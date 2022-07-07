@@ -42,7 +42,7 @@ describe("Sample Test Suite", () => {
     expect(groupedByScript).toHaveLength(Object.keys(epData).length);
   })
 
-  it.skip("Tests that lookupAvailableFunds returns the right assets and values", async () => {
+  it("Tests that lookupAvailableFunds returns the right assets and values", async () => {
     const funds = await init(
       config.url,
       config.apiKey,
@@ -73,10 +73,11 @@ describe("Sample Test Suite", () => {
 
       return fundsAvailable(epData);
     });
-    expect(funds.lovelace.toString()).toBe("120000000");
+
+    expect(funds.lovelace.toString()).toBe("50000000");
   });
 
-  it("Tests that claimFunds is able to claims the given funds", async () => {
+  it.skip("Tests that claimFunds is able to claims the given funds", async () => {
     const txHash = await init(
       config.url,
       config.apiKey,
@@ -107,8 +108,6 @@ describe("Sample Test Suite", () => {
 
       return claimFunds(epData);
     });
-
-    console.log(txHash)
 
     expect(txHash).toBeTruthy();
     expect(typeof txHash).toBe('string');

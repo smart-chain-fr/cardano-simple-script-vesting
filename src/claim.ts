@@ -46,8 +46,6 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
 
   if (!claimableUtxos.length) throw Error("Nothing to claim");
 
-  // console.log(claimableUtxos.map((x) => x.nativeScript));
-
   const natives = claimableUtxos.map((x) =>
     buildTimelockedNativeScript(x.nativeScript.unlockTime, x.nativeScript.pkh)
   );
@@ -55,14 +53,13 @@ const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
   const tx = lucid
     .newTx()
     .collectFrom(claimableUtxos.map((x) => x.utxos).flat())
+    .payToAddress(await lucid.wallet.address(), totalClaimableUtxos(claimableUtxos));
 
   natives.forEach((n) => tx.txBuilder.add_native_script(n));
 
   const txScriptAttached = await tx.validFrom(Date.now() - 100000).complete();
 
   const signed = await txScriptAttached.sign().complete();
-
-  console.log(signed.txSigned.to_json());
 
   const txHash = await signed.submit();
   return txHash;
