@@ -1,10 +1,20 @@
 import { C, Lucid, PaymentKeyHash, UTxO } from "lucid-cardano";
 
-type GroupedByScript = {
+type ScriptAssets = {
   address: string;
   nativeScript: { pkh: string; unlockTime: number };
   assets: { currencySymbol: string; tokenName: string }[];
 };
+
+const groupBy = <T>(array: T[], predicate: (a: T) => string) =>
+  array.reduce((acc: { [key: string]: T[] }, cur: T) => {
+    const key = predicate(cur);
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(cur);
+    return acc;
+  }, {});
 
 export type ToClaim = {
   [key: string]: {
@@ -78,7 +88,38 @@ export const buildTimelockedNativeScript = (slot: number, pkh: string) => {
   return C.NativeScript.new_script_all(scriptAll);
 };
 
-export const groupByScript = (toClaim: ToClaim) =>
+
+export const groupByScript = (toClaim: ToClaim) => {
+  // flattened entries into an array of native script with address as field 
+  const withAddress = Object.entries(toClaim)
+    .map(([address, entries]) =>
+      entries.map((entry) => ({ address, ...entry }))
+    )
+    .flat();
+
+  // groups native scripts by address and native script (pkh and unlockTime)
+  // This is to extract unique products of the form { address, nativeScript }
+  const groupedByAddress = groupBy(
+    withAddress,
+    (entry) =>
+      entry.address + entry.nativeScript.pkh + entry.nativeScript.unlockTime
+  );
+
+  // traverse each individual group and merge the assets field
+  const mergedAssets = Object.values(groupedByAddress).map((entries) =>
+    entries.reduce(
+      (acc: ScriptAssets, entry) => ({
+        ...acc,
+        assets: [...acc.assets, entry.asset],
+      }),
+      { ...entries[0], assets: [] }
+    )
+  );
+
+  return mergedAssets;
+};
+
+/* export const groupByScript = (toClaim: ToClaim) =>
   Object.entries(toClaim)
     .map(([address, value]) =>
       value.reduce((acc2: GroupedByScript[], nc) => {
@@ -102,4 +143,4 @@ export const groupByScript = (toClaim: ToClaim) =>
         ];
       }, [])
     )
-    .flat();
+    .flat(); */
