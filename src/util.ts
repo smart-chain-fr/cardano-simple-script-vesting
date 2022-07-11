@@ -6,7 +6,7 @@ type ScriptAssets = {
   assets: { currencySymbol: string; tokenName: string }[];
 };
 
-const groupBy = <T>(array: T[], predicate: (a: T) => string) =>
+const groupBy = <T>(array: T[], predicate: (_a: T) => string) =>
   array.reduce((acc: { [key: string]: T[] }, cur: T) => {
     const key = predicate(cur);
     if (!acc[key]) {
