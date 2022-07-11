@@ -79,8 +79,8 @@ export const buildTimelockedNativeScript = (slot: number, pkh: string) => {
 };
 
 export const groupByScript = (toClaim: ToClaim) =>
-  Object.entries(toClaim).reduce(
-    (acc: GroupedByScript[], [address, value]) =>
+  Object.entries(toClaim)
+    .map(([address, value]) =>
       value.reduce((acc2: GroupedByScript[], nc) => {
         const seenIndex = acc2.findIndex(
           (x) =>
@@ -100,6 +100,6 @@ export const groupByScript = (toClaim: ToClaim) =>
             assets: [nc.asset],
           },
         ];
-      }, acc),
-    []
-  );
+      }, [])
+    )
+    .flat();
