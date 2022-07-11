@@ -88,10 +88,15 @@ export const buildTimelockedNativeScript = (slot: number, pkh: string) => {
   return C.NativeScript.new_script_all(scriptAll);
 };
 
+export const groupByScript = (toClaim: ToClaim): ScriptAssets[] => {
+  // flattened entries into an array of native script with address as field
+  type SingleScriptAsset = {
+    nativeScript: { pkh: string; unlockTime: number };
+    asset: { currencySymbol: string; tokenName: string };
+    address: string;
+  };
 
-export const groupByScript = (toClaim: ToClaim) => {
-  // flattened entries into an array of native script with address as field 
-  const withAddress = Object.entries(toClaim)
+  const withAddress: SingleScriptAsset[] = Object.entries(toClaim)
     .map(([address, entries]) =>
       entries.map((entry) => ({ address, ...entry }))
     )
@@ -99,48 +104,25 @@ export const groupByScript = (toClaim: ToClaim) => {
 
   // groups native scripts by address and native script (pkh and unlockTime)
   // This is to extract unique products of the form { address, nativeScript }
-  const groupedByAddress = groupBy(
+  const groupedByAddress: {
+    [address: string]: SingleScriptAsset[];
+  } = groupBy(
     withAddress,
     (entry) =>
       entry.address + entry.nativeScript.pkh + entry.nativeScript.unlockTime
   );
 
   // traverse each individual group and merge the assets field
-  const mergedAssets = Object.values(groupedByAddress).map((entries) =>
-    entries.reduce(
-      (acc: ScriptAssets, entry) => ({
-        ...acc,
-        assets: [...acc.assets, entry.asset],
-      }),
-      { ...entries[0], assets: [] }
-    )
+  const mergedAssets: ScriptAssets[] = Object.values(groupedByAddress).map(
+    (entries) =>
+      entries.reduce(
+        (acc: ScriptAssets, entry) => ({
+          ...acc,
+          assets: [...acc.assets, entry.asset],
+        }),
+        { ...entries[0], assets: [] }
+      )
   );
 
   return mergedAssets;
 };
-
-/* export const groupByScript = (toClaim: ToClaim) =>
-  Object.entries(toClaim)
-    .map(([address, value]) =>
-      value.reduce((acc2: GroupedByScript[], nc) => {
-        const seenIndex = acc2.findIndex(
-          (x) =>
-            x.address === address &&
-            x.nativeScript.pkh === nc.nativeScript.pkh &&
-            x.nativeScript.unlockTime === nc.nativeScript.unlockTime
-        );
-        if (seenIndex >= 0) {
-          acc2[seenIndex].assets.push(nc.asset);
-          return acc2;
-        }
-        return [
-          ...acc2,
-          {
-            address,
-            nativeScript: nc.nativeScript,
-            assets: [nc.asset],
-          },
-        ];
-      }, [])
-    )
-    .flat(); */
