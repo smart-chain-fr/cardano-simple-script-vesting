@@ -1,146 +1,96 @@
+import { Lucid, Blockfrost, Network, WalletApi } from "lucid-cardano";
 import {
-  Lucid,
-  Blockfrost,
-  UTxO,
-  Assets,
-  Network,
-  WalletProvider,
-} from "lucid-cardano";
-import {
-  buildTimelockedNativeScript,
-  claimChecks,
-  deduplicateUtxosReducer,
-  groupByScript,
   ToClaim,
+  lookupAvailableFunds,
+  claimVestedFunds,
+  totalClaimableUtxos,
 } from "./util";
 
-declare global {
-  // eslint-disable-next-line no-unused-vars
-  interface Window {
-    cardano: any;
+export const NetworkTestnet = "Testnet" as Network;
+export const NetworkMainnet = "Mainnet" as Network;
+export const NetworkPreprod = "Preprod" as Network;
+export const NetworkPreview = "Preview" as Network;
+
+const blockfrostUrls: { [key: string]: string } = {
+  [NetworkTestnet]: "https://cardano-testnet.blockfrost.io/api/v0",
+  [NetworkMainnet]: "https://cardano.blockfrost.io/api/v0",
+  [NetworkPreprod]: "https://cardano-preprod.blockfrost.io/api/v0",
+  [NetworkPreview]: "https://cardano-preview.blockfrost.io/api/v0",
+};
+
+export class Claim {
+  walletApi: WalletApi;
+
+  clientInstance: Lucid | undefined;
+
+  network: Network;
+
+  blockfrostKey: string;
+
+  constructor(
+    network: Network,
+    walletApi: WalletApi,
+    blockfrostKey: string
+  ) {
+    if (!blockfrostKey) {
+      throw new Error("Invalid API Key");
+    }
+    this.walletApi = walletApi;
+    this.network = network;
+    this.blockfrostKey = blockfrostKey;
+  }
+
+  async client(): Promise<Lucid> {
+    if (!this.clientInstance) {
+      const bfAPI = new Blockfrost(
+        blockfrostUrls[this.network],
+        this.blockfrostKey
+      );
+      const lucidClient = await Lucid.new(bfAPI, this.network);
+      if (this.walletApi.toString().startsWith("ed25519")) {
+        this.clientInstance = await lucidClient.selectWalletFromPrivateKey(
+          this.walletApi.toString()
+        );
+      } else {
+        // For browser wallet:
+        this.clientInstance = await lucidClient.selectWallet(
+          this.walletApi
+        );
+      }
+    }
+    return this.clientInstance;
+  }
+
+  async fundsAvailable(epData: ToClaim) {
+    const client = await this.client();
+    const funds = totalClaimableUtxos(
+      await lookupAvailableFunds(client)(epData)
+    );
+    return funds;
+  }
+
+  async claimFunds(epData: ToClaim) {
+    const client = await this.client();
+    const txHash = await claimVestedFunds(client)(epData);
+    return txHash;
   }
 }
 
-const lookupAvailableFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
-  const groupedByScript = groupByScript(toClaim);
-
-  const addressesWithUtxos = await Promise.all(
-    groupedByScript.map(async (x) => {
-      const utxos = await lucid.utxosAt(x.address);
-
-      const predicates = claimChecks(lucid)(
-        x.nativeScript.pkh,
-        x.nativeScript.unlockTime,
-        x.assets
-      );
-
-      const claimableUtxos = utxos.filter((u) => predicates.every((p) => p(u)));
-
-      return {
-        utxos: claimableUtxos,
-        nativeScript: x.nativeScript,
-        address: x.address,
-      };
-    })
-  );
-
-  return addressesWithUtxos.filter((x) => !!x.utxos.length);
-};
-
-const totalClaimableUtxos = (
-  flattenedUtxos: {
-    utxos: UTxO[];
-    nativeScript: { pkh: string; unlockTime: number };
-  }[]
-) =>
-  flattenedUtxos
-    .reduce(deduplicateUtxosReducer, [])
-    .map((x) => x.assets)
-    .flat()
-    .reduce(
-      (acc: Assets, cur: Assets) =>
-        Object.entries(cur).reduce(
-          (acc2: Assets, [a, v]) =>
-            a in acc2
-              ? { ...acc2, [a]: acc2[a].valueOf() + v.valueOf() }
-              : { ...acc2, [a]: v },
-          acc
-        ),
-      {}
-    );
-
-const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
-  const claimableUtxos = await lookupAvailableFunds(lucid)(toClaim);
-
-  if (!claimableUtxos.length) throw Error("Nothing to claim");
-
-  const natives = claimableUtxos.map((x) =>
-    buildTimelockedNativeScript(x.nativeScript.unlockTime, x.nativeScript.pkh)
-  );
-
-  const tx = lucid
-    .newTx()
-    .collectFrom(claimableUtxos.map((x) => x.utxos).flat())
-    .payToAddress(
-      await lucid.wallet.address(),
-      totalClaimableUtxos(claimableUtxos)
-    );
-
-  natives.forEach((n) => tx.txBuilder.add_native_script(n));
-
-  const txScriptAttached = await tx.validFrom(Date.now() - 100000).complete();
-
-  const signed = await txScriptAttached.sign().complete();
-
-  const txHash = await signed.submit();
-  return txHash;
-};
-
-/**
- * Initialise the library and expose lib API
- * @param {string} blockfrostUrl Blockfrost API URL
- * @param {string} apiKey Blockfrost API Key
- * @param wallet Either bech32 encoded signing key or a browser wallet provider.
- * @param {string} [network]
- * @namespace cardashift-lucid-contracts
- */
-const init = async (
-  blockfrostUrl: string,
-  apiKey: string,
-  wallet: string | WalletProvider,
-  network: Network = "Testnet"
-) => {
-  const lucid = await Lucid.new(new Blockfrost(blockfrostUrl, apiKey), network);
-
-  if (wallet.startsWith("ed25519")) {
-    lucid.selectWalletFromPrivateKey(wallet);
-  } else {
-    // For browser wallet:
-    lucid.selectWallet(wallet);
+export const networkName = (key: string): Network => {
+  if (!key) {
+    throw new Error("Invalid network key");
   }
 
-  const getEndpointData = (): Promise<ToClaim> =>
-    fetch("http://localhost:8000/data.json").then((r) => r.json());
-
-  return {
-    /**
-     * Query and return available funds that can be claimed optionally based on
-     * given claim data, otherwise fetches claim data from configured endpoint otherwise.
-     * @memberof cardashift-lucid-contracts
-     */
-    fundsAvailable: async (epData?: ToClaim) =>
-      totalClaimableUtxos(
-        await lookupAvailableFunds(lucid)(epData || (await getEndpointData()))
-      ),
-    /**
-     * Claim available funds optionally from given claim data when param is
-     * provided, otherwise request claim data from configured endpoint.
-     * @memberof cardashift-lucid-contracts
-     * @param {ToClaim} [epData] Optional endpoint data to claim from
-     */
-    claimFunds: async (epData?: ToClaim) =>
-      claimVestedFunds(lucid)(epData || (await getEndpointData())),
-  };
+  switch (key.toLowerCase()) {
+    case "testnet":
+      return NetworkTestnet;
+    case "mainnet":
+      return NetworkMainnet;
+    case "preprod":
+      return NetworkPreprod;
+    case "preview":
+      return NetworkPreview;
+    default:
+      throw new Error(`Network not supported: ${key}`);
+  }
 };
-
-export default init;

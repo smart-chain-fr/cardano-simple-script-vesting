@@ -1,3 +1,5 @@
-import init from "./claim";
+import { Claim, networkName } from "./claim";
+import selectWalletProvider from "./wallets";
 
-export default init;
+export default Claim;
+export { networkName, selectWalletProvider };

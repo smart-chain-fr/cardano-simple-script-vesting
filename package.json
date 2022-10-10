@@ -1,63 +1,41 @@
 {
-  "version": "0.1.0",
+  "name": "cardashift-lucid-contracts",
+  "version": "0.1.25",
+  "description": "",
   "license": "MIT",
-  "main": "dist/index.js",
-  "typings": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "engines": {
-    "node": ">=10"
-  },
+  "main": "dist/src/index.js",
   "scripts": {
-    "start": "tsdx watch",
-    "build": "tsdx build",
-    "test-old": "tsdx test",
+    "build": "tsc",
     "test": "node --no-warnings --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "clean": "rm -f ./dist/*.js && rm -f ./dist/*.wasm",
     "lint": "eslint src/**/*.ts test/**/*.ts",
     "lint:fix": "eslint --fix src/**/*.ts test/**/*.ts",
-    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
-    "prepare": "tsdx build",
-    "size": "size-limit",
-    "analyze": "size-limit --why"
+    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'"
   },
-  "peerDependencies": {},
   "husky": {
     "hooks": {
       "pre-commit": "npm run lint"
     }
   },
-  "name": "cardashift-lucid-contracts",
-  "module": "dist/cardashift-lucid-contracts.esm.js",
-  "exports": {
-    ".": {
-      "import": "./dist/cardashift-lucid-contracts.esm.js",
-      "require": "./dist/index.js"
-    }
-  },
   "devDependencies": {
-    "@size-limit/preset-small-lib": "^7.0.8",
+    "@types/jest": "^29.0.0",
     "@typescript-eslint/eslint-plugin": "^5.26.0",
     "@typescript-eslint/parser": "^5.26.0",
-    "bip39": "^3.0.4",
+    "babel-core": "^6.26.3",
+    "babel-loader": "^8.2.5",
+    "babel-preset-es2015": "^6.24.1",
     "eslint": "^8.16.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-import": "^2.25.2",
     "eslint-plugin-prettier": "^4.0.0",
-    "fast-check": "^3.0.0",
     "husky": "^8.0.1",
     "jest": "^28.1.0",
     "prettier": "^2.6.2",
-    "size-limit": "^7.0.8",
     "ts-jest": "^28.0.4",
-    "tsdx": "^0.14.1",
-    "tslib": "^2.4.0",
-    "typescript": "^4.7.2"
+    "typescript": "^4.7.3"
   },
-  "type": "module",
   "dependencies": {
-    "lucid-cardano": "^0.3.3"
+    "lucid-cardano": "^0.6.6"
   }
 }

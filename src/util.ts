@@ -1,8 +1,8 @@
-import { C, Lucid, PaymentKeyHash, UTxO } from "lucid-cardano";
+import { C, Lucid, PaymentKeyHash, UTxO, Assets } from "lucid-cardano";
 
 type ScriptAssets = {
   address: string;
-  nativeScript: { pkh: string; unlockTime: number };
+  nativeScript: { requireSignature: string; requireTimeAfterSlot: number };
   assets: { currencySymbol: string; tokenName: string }[];
 };
 
@@ -18,12 +18,12 @@ const groupBy = <T>(array: T[], predicate: (_a: T) => string) =>
 
 export type ToClaim = {
   [key: string]: {
-    nativeScript: { pkh: string; unlockTime: number };
+    nativeScript: { requireSignature: string; requireTimeAfterSlot: number };
     asset: { currencySymbol: string; tokenName: string };
   }[];
 };
 
-export const deduplicateUtxosReducer = (
+const deduplicateUtxosReducer = (
   acc: UTxO[],
   cur: { utxos: UTxO[]; nativeScript: any }
 ) => [
@@ -38,16 +38,16 @@ export const deduplicateUtxosReducer = (
   ),
 ];
 
-export const claimChecks =
+const claimChecks =
   (lucid: Lucid) =>
   (
-    pkh: PaymentKeyHash,
-    unlockTime: number,
+    requireSignature: PaymentKeyHash,
+    requireTimeAfterSlot: number,
     assets: { currencySymbol: string; tokenName: string }[]
   ) =>
-    [
+     [
       // unlock time check
-      () => lucid.utils.unixTimeToSlot(Date.now()) > unlockTime,
+      () => lucid.utils.unixTimeToSlot(Date.now()) > requireTimeAfterSlot,
       // assetlcass check
       (u: UTxO) => {
         const assetsConcat = assets.map((asset) => {
@@ -67,20 +67,21 @@ export const claimChecks =
       // Object.keys(u.assets).includes(
       //   assets.currencySymbol + assets.tokenName
       // ),
-      () => !!pkh,
+      () => !!requireSignature,
     ];
 
-export const buildTimelockedNativeScript = (slot: number, pkh: string) => {
+
+const buildTimelockedNativeScript = (requireTimeAfterSlot: number, requireSignature: string) => {
   const ns = C.NativeScripts.new();
 
   ns.add(
     C.NativeScript.new_timelock_start(
-      C.TimelockStart.new(C.BigNum.from_str(slot.toString()))
+      C.TimelockStart.new(C.BigNum.from_str(requireTimeAfterSlot.toString()))
     )
   );
   ns.add(
     C.NativeScript.new_script_pubkey(
-      C.ScriptPubkey.new(C.Ed25519KeyHash.from_hex(pkh))
+      C.ScriptPubkey.new(C.Ed25519KeyHash.from_hex(requireSignature))
     )
   );
 
@@ -91,7 +92,7 @@ export const buildTimelockedNativeScript = (slot: number, pkh: string) => {
 export const groupByScript = (toClaim: ToClaim): ScriptAssets[] => {
   // flattened entries into an array of native script with address as field
   type SingleScriptAsset = {
-    nativeScript: { pkh: string; unlockTime: number };
+    nativeScript: { requireSignature: string; requireTimeAfterSlot: number };
     asset: { currencySymbol: string; tokenName: string };
     address: string;
   };
@@ -102,14 +103,14 @@ export const groupByScript = (toClaim: ToClaim): ScriptAssets[] => {
     )
     .flat();
 
-  // groups native scripts by address and native script (pkh and unlockTime)
+  // groups native scripts by address and native script (requireSignature and requireTimeAfterSlot)
   // This is to extract unique products of the form { address, nativeScript }
   const groupedByAddress: {
     [address: string]: SingleScriptAsset[];
   } = groupBy(
     withAddress,
     (entry) =>
-      entry.address + entry.nativeScript.pkh + entry.nativeScript.unlockTime
+      entry.address + entry.nativeScript.requireSignature + entry.nativeScript.requireTimeAfterSlot
   );
 
   // traverse each individual group and merge the assets field
@@ -125,4 +126,83 @@ export const groupByScript = (toClaim: ToClaim): ScriptAssets[] => {
   );
 
   return mergedAssets;
+};
+
+export const lookupAvailableFunds =
+  (lucid: Lucid) => async (toClaim: ToClaim) => {
+    const groupedByScript = groupByScript(toClaim);
+
+    const addressesWithUtxos = await Promise.all(
+      groupedByScript.map(async (x) => {
+        const utxos = await lucid.utxosAt(x.address);
+
+        const predicates = claimChecks(lucid)(
+          x.nativeScript.requireSignature,
+          x.nativeScript.requireTimeAfterSlot,
+          x.assets
+        );
+
+        const claimableUtxos = utxos.filter((u) => predicates.every((p) => p(u)));
+        return {
+          utxos: claimableUtxos,
+          nativeScript: x.nativeScript,
+          address: x.address,
+        };
+      })
+    );
+
+    return addressesWithUtxos.filter((x) => !!x.utxos.length);
+  };
+
+export const totalClaimableUtxos = (
+  flattenedUtxos: {
+    utxos: UTxO[];
+    nativeScript: { requireSignature: string; requireTimeAfterSlot: number };
+  }[]
+) =>
+  {
+    const res = flattenedUtxos
+    .reduce(deduplicateUtxosReducer, [])
+    .map((x) => x.assets)
+    .flat()
+    .reduce(
+      (acc: Assets, cur: Assets) =>
+        Object.entries(cur).reduce(
+          (acc2: Assets, [a, v]) =>
+            a in acc2
+              ? { ...acc2, [a]: acc2[a].valueOf() + v.valueOf() }
+              : { ...acc2, [a]: v },
+          acc
+        ),
+      {}
+    );
+    return res;
+  }
+
+
+export const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
+  const claimableUtxos = await lookupAvailableFunds(lucid)(toClaim);
+
+  if (!claimableUtxos.length) throw Error("Nothing to claim");
+
+  const natives = claimableUtxos.map((x) =>
+    buildTimelockedNativeScript(x.nativeScript.requireTimeAfterSlot, x.nativeScript.requireSignature)
+  );
+
+  const tx = lucid
+    .newTx()
+    .collectFrom(claimableUtxos.map((x) => x.utxos).flat())
+    .payToAddress(
+      await lucid.wallet.address(),
+      totalClaimableUtxos(claimableUtxos)
+    );
+
+  natives.forEach((n) => tx.txBuilder.add_native_script(n));
+
+  const txScriptAttached = await tx.validFrom(Date.now() - 100000).complete();
+
+  const signed = await txScriptAttached.sign().complete();
+
+  const txHash = await signed.submit();
+  return txHash;
 };
