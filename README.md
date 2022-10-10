@@ -8,7 +8,7 @@ npm install cardashift-lucid-contracts
 ### Initialisation
 
 To use the utilit, first instantiate the class with the following parameters:
-* `network` : Network to run. `Testnet` and `Mainnet` currently supported.
+* `network` : Network to run. `Testnet`, `Mainnet`, `Preprod` and `Preview` currently supported.
 * `walletProvider` : A browser wallet provider (`nami`,`flint`,`eternal` etc.) or
   a bech32 encoded payment signing key (short: `ed25519_sk1...` or extended: `ed25519e_sk1...`). Note that Lucid doesn't provide support for importing staking signing keys so you cannot load a wallet for a "long" (base) address (eg. `addr_test1qpluggdj3uf3prtczppgvu4nexgxzmzmpckzjs8v9jyqxpvz2l3xlg3k42ss7m55e94r62ctwc0awhh02jtcf60qrg0sxppnvm`). If you only provide the payment signing key for this address, Lucid will load the wallet with the following address `addr_test1vpluggdj3uf3prtczppgvu4nexgxzmzmpckzjs8v9jyqxpg3pq80m`.
 * `apiKey` : A blockfrost apiKey/projectId
