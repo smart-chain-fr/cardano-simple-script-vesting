@@ -1,18 +1,16 @@
 import { Lucid, Blockfrost, Network, WalletApi } from "lucid-cardano";
 import {
-  ToClaim,
+  ScriptAssets,
   lookupAvailableFunds,
   claimVestedFunds,
   totalClaimableUtxos,
 } from "./util";
 
-export const NetworkTestnet = "Testnet" as Network;
 export const NetworkMainnet = "Mainnet" as Network;
 export const NetworkPreprod = "Preprod" as Network;
 export const NetworkPreview = "Preview" as Network;
 
 const blockfrostUrls: { [key: string]: string } = {
-  [NetworkTestnet]: "https://cardano-testnet.blockfrost.io/api/v0",
   [NetworkMainnet]: "https://cardano.blockfrost.io/api/v0",
   [NetworkPreprod]: "https://cardano-preprod.blockfrost.io/api/v0",
   [NetworkPreview]: "https://cardano-preview.blockfrost.io/api/v0",
@@ -61,7 +59,7 @@ export class Claim {
     return this.clientInstance;
   }
 
-  async fundsAvailable(epData: ToClaim) {
+  async fundsAvailable(epData: ScriptAssets[]) {
     const client = await this.client();
     const funds = totalClaimableUtxos(
       await lookupAvailableFunds(client)(epData)
@@ -69,7 +67,7 @@ export class Claim {
     return funds;
   }
 
-  async claimFunds(epData: ToClaim) {
+  async claimFunds(epData: ScriptAssets[]) {
     const client = await this.client();
     const txHash = await claimVestedFunds(client)(epData);
     return txHash;
@@ -82,8 +80,6 @@ export const networkName = (key: string): Network => {
   }
 
   switch (key.toLowerCase()) {
-    case "testnet":
-      return NetworkTestnet;
     case "mainnet":
       return NetworkMainnet;
     case "preprod":

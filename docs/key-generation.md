@@ -7,7 +7,7 @@ environment in conjunction with a wallet provider.
 #### Generate key pair
 `cardano-cli address key-gen --verification-key-file ./shelley.vkey --signing-key-file ./shelley.skey`
 #### Build addresses
-`cardano-cli address build --payment-verification-key-file ./shelley.vkey --out-file ./shelley.addr --testnet-magic 1097911063`
+`cardano-cli address build --payment-verification-key-file ./shelley.vkey --out-file ./shelley.addr --testnet-magic 1`
 `> addr_test1vqelufy5udd6txtrvk925p8zs68fhetuntrfk3h3z9e9x6c3yj49l`
 
 #### Encode skey into bech 32

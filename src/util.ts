@@ -1,26 +1,9 @@
 import { C, Lucid, PaymentKeyHash, UTxO, Assets } from "lucid-cardano";
 
-type ScriptAssets = {
+export type ScriptAssets = {
   address: string;
   nativeScript: { requireSignature: string; requireTimeAfterSlot: number };
   assets: { currencySymbol: string; tokenName: string }[];
-};
-
-const groupBy = <T>(array: T[], predicate: (_a: T) => string) =>
-  array.reduce((acc: { [key: string]: T[] }, cur: T) => {
-    const key = predicate(cur);
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(cur);
-    return acc;
-  }, {});
-
-export type ToClaim = {
-  [key: string]: {
-    nativeScript: { requireSignature: string; requireTimeAfterSlot: number };
-    asset: { currencySymbol: string; tokenName: string };
-  }[];
 };
 
 const deduplicateUtxosReducer = (
@@ -64,9 +47,6 @@ const claimChecks =
 
         return !!u.assets && containsAssets;
       },
-      // Object.keys(u.assets).includes(
-      //   assets.currencySymbol + assets.tokenName
-      // ),
       () => !!requireSignature,
     ];
 
@@ -75,13 +55,13 @@ const buildTimelockedNativeScript = (requireTimeAfterSlot: number, requireSignat
   const ns = C.NativeScripts.new();
 
   ns.add(
-    C.NativeScript.new_timelock_start(
-      C.TimelockStart.new(C.BigNum.from_str(requireTimeAfterSlot.toString()))
+    C.NativeScript.new_script_pubkey(
+      C.ScriptPubkey.new(C.Ed25519KeyHash.from_hex(requireSignature))
     )
   );
   ns.add(
-    C.NativeScript.new_script_pubkey(
-      C.ScriptPubkey.new(C.Ed25519KeyHash.from_hex(requireSignature))
+    C.NativeScript.new_timelock_start(
+      C.TimelockStart.new(C.BigNum.from_str(requireTimeAfterSlot.toString()))
     )
   );
 
@@ -89,51 +69,16 @@ const buildTimelockedNativeScript = (requireTimeAfterSlot: number, requireSignat
   return C.NativeScript.new_script_all(scriptAll);
 };
 
-export const groupByScript = (toClaim: ToClaim): ScriptAssets[] => {
-  // flattened entries into an array of native script with address as field
-  type SingleScriptAsset = {
-    nativeScript: { requireSignature: string; requireTimeAfterSlot: number };
-    asset: { currencySymbol: string; tokenName: string };
-    address: string;
-  };
-
-  const withAddress: SingleScriptAsset[] = Object.entries(toClaim)
-    .map(([address, entries]) =>
-      entries.map((entry) => ({ address, ...entry }))
-    )
-    .flat();
-
-  // groups native scripts by address and native script (requireSignature and requireTimeAfterSlot)
-  // This is to extract unique products of the form { address, nativeScript }
-  const groupedByAddress: {
-    [address: string]: SingleScriptAsset[];
-  } = groupBy(
-    withAddress,
-    (entry) =>
-      entry.address + entry.nativeScript.requireSignature + entry.nativeScript.requireTimeAfterSlot
-  );
-
-  // traverse each individual group and merge the assets field
-  const mergedAssets: ScriptAssets[] = Object.values(groupedByAddress).map(
-    (entries) =>
-      entries.reduce(
-        (acc: ScriptAssets, entry) => ({
-          ...acc,
-          assets: [...acc.assets, entry.asset],
-        }),
-        { ...entries[0], assets: [] }
-      )
-  );
-
-  return mergedAssets;
-};
-
 export const lookupAvailableFunds =
-  (lucid: Lucid) => async (toClaim: ToClaim) => {
-    const groupedByScript = groupByScript(toClaim);
+  (lucid: Lucid) => async (toClaim: ScriptAssets[]) => {
+
+    const scriptsWithoutDuplicatedAssets = toClaim.map(script => {
+      const uniqueAssets = script.assets.filter((value, index) => script.assets.indexOf(value) === index);
+      return {...script, assets: uniqueAssets};
+    });
 
     const addressesWithUtxos = await Promise.all(
-      groupedByScript.map(async (x) => {
+      scriptsWithoutDuplicatedAssets.map(async (x) => {
         const utxos = await lucid.utxosAt(x.address);
 
         const predicates = claimChecks(lucid)(
@@ -180,7 +125,7 @@ export const totalClaimableUtxos = (
   }
 
 
-export const claimVestedFunds = (lucid: Lucid) => async (toClaim: ToClaim) => {
+export const claimVestedFunds = (lucid: Lucid) => async (toClaim: ScriptAssets[]) => {
   const claimableUtxos = await lookupAvailableFunds(lucid)(toClaim);
 
   if (!claimableUtxos.length) throw Error("Nothing to claim");

@@ -1,6 +1,6 @@
 {
-  "name": "cardashift-lucid-contracts",
-  "version": "0.2.0",
+  "name": "cardano-simple-script-vesting",
+  "version": "1.0.0",
   "description": "",
   "license": "MIT",
   "main": "dist/src/index.js",
@@ -36,6 +36,6 @@
     "typescript": "^4.7.3"
   },
   "dependencies": {
-    "lucid-cardano": "^0.6.6"
+    "lucid-cardano": "^0.8.6"
   }
 }
