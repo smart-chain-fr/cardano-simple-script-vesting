@@ -1,200 +1,112 @@
+# cardano-simple-script-vesting
+
+This library is part of a suite of products for [Cardashift's launchpad](https://cardashift.com/) as a first and easy implementation of a vesting contract using [Cardano Simple Scripts](https://github.com/input-output-hk/cardano-node/blob/master/doc/reference/simple-scripts.md)(aka Native Script). The goal is to lock tokens related to Private Sales' investors and Cardashift's accounts (Treasury, Team, Advisors,...).
+
+The library uses [lucid-cardano](https://www.npmjs.com/package/lucid-cardano).
+As for now, this library is only used to check available tokens to be claimed at a Simple Script address and claim them. The locking Simple Script enforces 2 conditions:
+- an unlock time (expressed in slot number)
+- a pubKeyHash of the tokens owner
+The Simple Script is of the form:
+```json
+{
+  "type": "all",
+  "scripts":
+  [
+    {
+      "type": "sig",
+      "keyHash": "33fe2494e35ba59963658aaa04e2868e9be57c9ac69b46f11172536b"
+    },
+    {
+      "type": "after",
+      "slot": 17317800
+    }
+  ]
+}
+
+```
+
 ## Usage
+
+### Installation
+```
+npm install cardano-simple-script-vesting
+```
 
 ### Initialisation
 
-To use the utilit, first initialise the library with the following parameters:
-* `blockfrostUrl` : A blockfrost api project URL
+To use the utilit, first instantiate the class with the following parameters:
+* `network` : Network to run. `Mainnet`, `Preprod` and `Preview` currently supported.
+* `walletProvider` : A browser wallet provider (`nami`,`flint`,`eternal` etc.) or a bech32 encoded payment signing key (short: `ed25519_sk1...` or extended: `ed25519e_sk1...`).
 * `apiKey` : A blockfrost apiKey/projectId
-* `wallet` : A browser wallet provider (`nami`,`flint`,`eternal` etc.) or
-  a bech32 encoded signing key (`ed25519_sk1...`)
-* `network`: Network to run. Default is `Testnet`
 
+Note 1: Lucid doesn't provide support for importing payment signing key + staking signing keys, so you cannot load a wallet for a "long" (base) address.
+        e.g. Long address: `addr_test1qpluggdj3uf3prtczppgvu4nexgxzmzmpckzjs8v9jyqxpvz2l3xlg3k42ss7m55e94r62ctwc0awhh02jtcf60qrg0sxppnvm`
+             If you only provide the payment signing key for this address, Lucid will load the wallet with the following address `addr_test1vpluggdj3uf3prtczppgvu4nexgxzmzmpckzjs8v9jyqxpg3pq80m`.
+        However, everything is fine if you load a wallet from a browser wallet provider (which is the most frequent case).
+
+Note 2: For keys derivation and script generation you can refer to [docs](docs) and [keys-and-scripts-examples](keys-and-scripts-examples).
 
 sample call:
 ```js
-init(
-      config.url,
-      config.apiKey,
-      "ed25519_sk1mp6a28k5423ttwny08362fl8dx2dtm4r2vyy0n83kpvny94hxzhqw96eru",
-      "Testnet"
-    )
+import Claim, { selectWalletProvider, networkName } from "cardashift-lucid-contracts";
+import config from "../config";
+
+const wProvider = await selectWalletProvider("nami");
+const claim = new Claim(networkName(config.network), wProvider, config.apiKey);
+```
+Note here that we have put the config in another file `config.ts`:
+```js
+export default {
+    network: "Preprod",
+    apiKey: "preprodLcLqm10CEnmMJEzLMtp7w3MtaxhKKE13",
+  }
+
 ```
 
-### Exposed functions
+### Exposed objects
 
-`init` takes the mentioned parameters, initialises the utility, and returns
-a promise exposing 2 functions:
+`default export` takes the mentioned parameters to instantiate the `Claim` class, which exposes the following methods :
 
-Both functions optionally take an endpoint data parameter which overrides
-querying the underlying endpoint and proceeds to lookup/claim funds
-corresponding to given __endpoint data__
+* `fundsAvailable`: A function that takes a `ScriptAssets[]` object  and returns the total amount of assets that can be claimed at that point in time.
 
+* `claimFunds`: A function that builds a transaction claiming the total amount of claimable assets
 
+`selectWalletProvider`: A function that takes a string representing a browser wallet provider (`nami`,`flint`,`eternal` etc.) or
+  a bech32 encoded signing key (short: `ed25519_sk1...` or extended: `ed25519e_sk1...`) and resolves to a `WalletProvider`
 
-* `fundsAvailable`: A function that queries an endpoint and returns the total
-  amount of assets that can be claimed at that point in time.
-
-* `claimFunds`: A function that builds a transaction claiming the total amount
-  of claimable assets
+`networkName`: A function that takes a string representing a network (`Mainnet`, `Preprod` and `Preview` currently supported) and resolves to a `Network`
 
 Example call:
 ```js
-      const epData = {
-        // native1
-        addr_test1wplllmmv66873lu9fxvralrddql5pxqg9ws8wvy4tz7gquqnyhmwk: [
-          {
-            nativeScript: {
-              unlockTime: 61302000,
-              pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8",
-            },
-            asset: { currencySymbol: "", tokenName: "" },
+      const toClaim = [
+        {
+          // native1
+          address: "addr_test1wq8pmhtxwuzdnfu3mqsvden7mrhgkw2lcv54tyvgnusskjcdwjeg3",
+          nativeScript: {
+            requireTimeAfterSlot: 17317800,
+            requireSignature: "d1e3f14070d32f2b3e167417f0ecbf77328f5520ca7aa6e0fb904c60",
           },
-        ],
-        // native2
-        addr_test1wr4s67h09peh3ssrx95l5k5rlfzw4ez4x2hlsuf6m4pwukc87xd44: [
-          {
-            nativeScript: {
-              unlockTime: 61310000,
-              pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8",
-            },
-            asset: { currencySymbol: "", tokenName: "" },
+          assets: [
+            { currencySymbol: "3450cad5f6a513eefc5e1a91cbeddf5657bb9b21354e7903983cd777", tokenName: "74434c4150" },
+          ]
+        },
+        {
+          // native2
+          address: "addr_test1wq03hjpm3qua770v02zmhkcfk6u7fxjxqly5aeequeaw4dgu6xa3z",
+          nativeScript: {
+            requireTimeAfterSlot: 17321400,
+            requireSignature: "d1e3f14070d32f2b3e167417f0ecbf77328f5520ca7aa6e0fb904c60",
           },
-        ],
-      };
+          assets: [
+            { currencySymbol: "3450cad5f6a513eefc5e1a91cbeddf5657bb9b21354e7903983cd777", tokenName: "74434c4150" },
+          ]
+        }
+      ];
 
-      return fundsAvailable(epData); // or claimFunds(epData)
-
-```
-
-## Full Demo
-
-[**VIDEO**](https://drive.google.com/file/d/17Fnpus1X-_Vnj9Itx43HlAKZt4D-H0td/view?usp=sharing)
-
-### Step 0: Key generation
-
-> **NOTE**: This step is only needed for the purposes of the demo and running the code in
-a NodeJS environment. It is not required if the library is used in a browser
-environment in conjunction with a wallet provider.
-
-##### Generate key pair
-`cardano-cli address key-gen --verification-key-file ./shelley.vkey --signing-key-file ./shelley.skey`
-##### Build addresses
-`cardano-cli address build --payment-verification-key-file ./shelley.vkey --out-file ./shelley.addr --testnet-magic 1097911063`
-##### Get payment key hash
-`cardano-cli address key-hash --payment-verification-key-file ./shelley.vkey --out-file shelley.pkh`
-
-##### Encode skey into bech 32
-`bech32 ed25519_sk <<< d875d51ed4aaa2b5ba6479e3a527e76994d5eea3530847ccf1b0593216b730ae`
-
-### Step 1: Native script setup
-
-##### First native script (native1.json)
-This script is set to unlock funds at slot 61302000 which is set in the past (at the time of testing)
-native1.json
-```json
-{
-  "type": "all",
-  "scripts":
-  [
-    {
-      "type": "after",
-      "slot": 61302000
-    },
-    {
-      "type": "sig",
-      "keyHash": "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8"
-    }
-  ]
-}
+      claim.fundsAvailable(toClaim).then(console.log); // or claimFunds(toClaim)
 
 ```
 
-##### Second native script (native2.json)
-This script is set to unlock funds at slot 61310000 which is set in the future (at the time of testing)
-```json
-{
-  "type": "all",
-  "scripts":
-  [
-    {
-      "type": "after",
-      "slot": 61310000
-    },
-    {
-      "type": "sig",
-      "keyHash": "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8"
-    }
-  ]
-}
-
-```
-
-
-##### Build the relevant addresses for the 2 native scripts
-
-`cardano-cli address build --payment-script-file native1.json --testnet-magic 1097911063 --out-file native1.addr`
-`cardano-cli address build --payment-script-file native2.json --testnet-magic 1097911063 --out-file native2.addr`
-
-
-
-### Step 2: Lock funds
-* [50 tAda -> native1](https://testnet.cardanoscan.io/transaction/a0e0c731711d5e5199ccbe988d7460c1be54e69cad4d99718bfa278a7950ec56)
-* [50 tAda -> native1](https://testnet.cardanoscan.io/transaction/c99953d66e7c388463680378ef0fcfd44f24c419ed776099cfe50d482761ae0f)
-* [30 tAda -> native2](https://testnet.cardanoscan.io/transaction/0a755e9b0072ac72e2245ec171f5c69b7f32d918a3517655c9c7c333f57ca08a)
-
-
-##### Query utxos at native script addresses
-* native1 has 2 utxos locked (50 tAda each)
-
-`cardano-cli query utxo --address $(cat native1.addr) --testnet-magic 1097911063`
-
-* native2 has 1 utxo locked (30 tAda)
-
-
-`cardano-cli query utxo --address $(cat native2.addr) --testnet-magic 1097911063`
-
-### Step 3: Claim Tx
-
-> **NOTE**: The demo js code requires blockfrost url, apiKey and claimant's wallet signing key as it's
-running in a NodeJS environment. The final product only requires a wallet
-provider to be initialized.
-
-```js
-import init from "cardashift-lucid-contracts"
-import config from "./config.js"
-
-init(
-  config.url, // blockfrost testnet url
-  config.apiKey, // blockfrost testnet apikey
-  "ed25519_sk1mp6a28k5423ttwny08362fl8dx2dtm4r2vyy0n83kpvny94hxzhqw96eru")
-  .then(({ claimFunds, fundsAvailable}) => {
-    const epData = {
-      // native1
-      addr_test1wplllmmv66873lu9fxvralrddql5pxqg9ws8wvy4tz7gquqnyhmwk: [{
-        nativeScript: {
-          unlockTime: 61302000,
-          pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8"
-        },
-        asset: { currencySymbol: "", tokenName: "" },
-      }],
-      // native2
-      addr_test1wr4s67h09peh3ssrx95l5k5rlfzw4ez4x2hlsuf6m4pwukc87xd44: [{
-        nativeScript: {
-          unlockTime: 61310000,
-          pkh: "404b36ba72b1e6602d33ad069ef25d8b65757c8d728e02aa1a280cd8"
-        },
-        asset: { currencySymbol: "", tokenName: "" },
-      }]
-    }
-
-    claimFunds(epData).then(console.log);
-  })
-```
-
-
-### Step 5: Inspect
-
-* [~100 tAda -> shelley.addr](https://testnet.cardanoscan.io/transaction/8a9ba9d5304fccfe0fc9039c63cabcfe839d145535f991b0073a2785dc096dbe)
-
-`cardano-cli query utxo --address $(cat shelley.addr) --testnet-magic 1097911063`
-
+## Integration example
+You have an example using NodeJS in [demo](./demo/).
+Otherwise, you can check the repo [vesting-lib-integration-mock](https://github.com/cardashift/vesting-lib-integration-mock) for interacting with a Nami wallet.
